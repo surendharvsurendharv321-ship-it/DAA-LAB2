@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String Matching Algorithms</title>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    padding:20px;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+h1{
+    text-align:center;
+    color:#007BFF;
+}
+
+input{
+    width:95%;
+    padding:10px;
+    margin:10px 0;
+    font-size:16px;
+}
+
+button{
+    padding:10px 20px;
+    background:#007BFF;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#0056b3;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:10px;
+    text-align:center;
+}
+
+th{
+    background:#007BFF;
+    color:white;
+}
+
+tr:nth-child(even){
+    background:#f2f2f2;
+}
+
+.result{
+    margin-top:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>String Matching Algorithms</h1>
+
+<label>Text</label>
+<input type="text" id="text" value="AABAACAADAABAABA">
+
+<label>Pattern</label>
+<input type="text" id="pattern" value="AABA">
+
+<br><br>
+
+<button onclick="runAlgorithms()">Run Algorithms</button>
+
+<div class="result">
+
+<h2>Search Results</h2>
+
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Match Positions</th>
+<th>Comparisons</th>
+</tr>
+</thead>
+
+<tbody id="resultBody"></tbody>
+
+</table>
+
+<h2>Performance Comparison</h2>
+
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Naive</th>
+<th>KMP</th>
+<th>Rabin-Karp</th>
+</tr>
+</thead>
+
+<tbody id="performanceBody"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+// ---------------- Naive ----------------
+
+function naiveSearch(text,pattern){
+
+    let matches=[];
+    let comparisons=0;
+
+    for(let i=0;i<=text.length-pattern.length;i++){
+
+        let j=0;
+
+        while(j<pattern.length){
+
+            comparisons++;
+
+            if(text[i+j]!=pattern[j])
+                break;
+
+            j++;
+        }
+
+        if(j==pattern.length)
+            matches.push(i);
+
+    }
+
+    return {matches,comparisons};
+
+}
+
+// ---------------- LPS ----------------
+
+function computeLPS(pattern){
+
+    let lps=new Array(pattern.length).fill(0);
+
+    let len=0;
+    let i=1;
+
+    while(i<pattern.length){
+
+        if(pattern[i]==pattern[len]){
+
+            len++;
+            lps[i]=len;
+            i++;
+
+        }
+        else{
+
+            if(len!=0)
+                len=lps[len-1];
+            else{
+                lps[i]=0;
+                i++;
+            }
+
+        }
+
+    }
+
+    return lps;
+
+}
+
+// ---------------- KMP ----------------
+
+function kmpSearch(text,pattern){
+
+    let matches=[];
+    let comparisons=0;
+
+    let lps=computeLPS(pattern);
+
+    let i=0;
+    let j=0;
+
+    while(i<text.length){
+
+        comparisons++;
+
+        if(text[i]==pattern[j]){
+            i++;
+            j++;
+        }
+
+        if(j==pattern.length){
+
+            matches.push(i-j);
+            j=lps[j-1];
+
+        }
+        else if(i<text.length && text[i]!=pattern[j]){
+
+            if(j!=0)
+                j=lps[j-1];
+            else
+                i++;
+
+        }
+
+    }
+
+    return {matches,comparisons};
+
+}
+
+// ---------------- Rabin Karp ----------------
+
+function rabinKarp(text,pattern){
+
+    const d=256;
+    const q=101;
+
+    let n=text.length;
+    let m=pattern.length;
+
+    let h=1;
+
+    for(let i=0;i<m-1;i++)
+        h=(h*d)%q;
+
+    let pHash=0;
+    let tHash=0;
+
+    for(let i=0;i<m;i++){
+
+        pHash=(d*pHash+pattern.charCodeAt(i))%q;
+        tHash=(d*tHash+text.charCodeAt(i))%q;
+
+    }
+
+    let matches=[];
+    let comparisons=0;
+
+    for(let s=0;s<=n-m;s++){
+
+        if(pHash==tHash){
+
+            let ok=true;
+
+            for(let k=0;k<m;k++){
+
+                comparisons++;
+
+                if(text[s+k]!=pattern[k]){
+                    ok=false;
+                    break;
+                }
+
+            }
+
+            if(ok)
+                matches.push(s);
+
+        }
+
+        if(s<n-m){
+
+            tHash=(d*(tHash-text.charCodeAt(s)*h)+text.charCodeAt(s+m))%q;
+
+            if(tHash<0)
+                tHash+=q;
+
+        }
+
+    }
+
+    return {matches,comparisons};
+
+}
+
+// ---------------- Random Text ----------------
+
+function randomText(size){
+
+    let chars="ABCD";
+    let text="";
+
+    for(let i=0;i<size;i++){
+
+        text+=chars[Math.floor(Math.random()*4)];
+
+    }
+
+    return text;
+
+}
+
+// ---------------- Main ----------------
+
+function runAlgorithms(){
+
+    const text=document.getElementById("text").value;
+    const pattern=document.getElementById("pattern").value;
+
+    const naive=naiveSearch(text,pattern);
+    const kmp=kmpSearch(text,pattern);
+    const rk=rabinKarp(text,pattern);
+
+    const body=document.getElementById("resultBody");
+
+    body.innerHTML="";
+
+    body.innerHTML+=`
+    <tr>
+    <td>Naive</td>
+    <td>${naive.matches.join(", ")}</td>
+    <td>${naive.comparisons}</td>
+    </tr>`;
+
+    body.innerHTML+=`
+    <tr>
+    <td>KMP</td>
+    <td>${kmp.matches.join(", ")}</td>
+    <td>${kmp.comparisons}</td>
+    </tr>`;
+
+    body.innerHTML+=`
+    <tr>
+    <td>Rabin-Karp</td>
+    <td>${rk.matches.join(", ")}</td>
+    <td>${rk.comparisons}</td>
+    </tr>`;
+
+    const patterns=["AB","ABCD","ABCDAB","ABCDABCD"];
+
+    const large=randomText(10000);
+
+    const perf=document.getElementById("performanceBody");
+
+    perf.innerHTML="";
+
+    for(let p of patterns){
+
+        let n=naiveSearch(large,p);
+        let k=kmpSearch(large,p);
+        let r=rabinKarp(large,p);
+
+        perf.innerHTML+=`
+        <tr>
+        <td>${p}</td>
+        <td>${n.comparisons}</td>
+        <td>${k.comparisons}</td>
+        <td>${r.comparisons}</td>
+        </tr>`;
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
